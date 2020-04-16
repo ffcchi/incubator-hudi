@@ -36,6 +36,8 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
+import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.table.HoodieTable;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
@@ -73,6 +75,11 @@ public class HoodieSnapshotCopier implements Serializable {
     FileSystem fs = FSUtils.getFs(baseDir, jsc.hadoopConfiguration());
     final SerializableConfiguration serConf = new SerializableConfiguration(jsc.hadoopConfiguration());
     final HoodieTableMetaClient tableMetadata = new HoodieTableMetaClient(fs.getConf(), baseDir);
+    final HoodieWriteConfig writeConfig = HoodieWriteConfig
+            .newBuilder()
+            .withPath(baseDir)
+            .build();
+    final HoodieTable table = HoodieTable.create(tableMetadata, writeConfig, jsc);
     final BaseFileOnlyView fsView = new HoodieTableFileSystemView(tableMetadata,
         tableMetadata.getActiveTimeline().getCommitsTimeline().filterCompletedInstants());
     // Get the latest commit
@@ -86,7 +93,7 @@ public class HoodieSnapshotCopier implements Serializable {
     LOG.info(String.format("Starting to snapshot latest version files which are also no-late-than %s.",
         latestCommitTimestamp));
 
-    List<String> partitions = FSUtils.getAllPartitionPaths(fs, baseDir, shouldAssumeDatePartitioning);
+    List<String> partitions = table.getAllPartitionPaths(jsc);
     if (partitions.size() > 0) {
       LOG.info(String.format("The job needs to copy %d partitions.", partitions.size()));
 

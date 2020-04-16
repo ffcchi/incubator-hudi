@@ -19,7 +19,6 @@
 package org.apache.hudi.table.action.rollback;
 
 import org.apache.hudi.common.HoodieRollbackStat;
-import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieCommitMetadata;
 import org.apache.hudi.common.model.HoodieWriteStat;
@@ -114,8 +113,7 @@ public class MergeOnReadRollbackActionExecutor extends BaseRollbackActionExecuto
   private List<RollbackRequest> generateRollbackRequests(JavaSparkContext jsc, HoodieInstant instantToRollback)
       throws IOException {
     String commit = instantToRollback.getTimestamp();
-    List<String> partitions = FSUtils.getAllPartitionPaths(table.getMetaClient().getFs(), table.getMetaClient().getBasePath(),
-        config.shouldAssumeDatePartitioning());
+    List<String> partitions = table.getAllPartitionPaths(jsc);
     int sparkPartitions = Math.max(Math.min(partitions.size(), config.getRollbackParallelism()), 1);
     return jsc.parallelize(partitions, Math.min(partitions.size(), sparkPartitions)).flatMap(partitionPath -> {
       HoodieActiveTimeline activeTimeline = table.getActiveTimeline().reload();

@@ -19,7 +19,6 @@
 package org.apache.hudi.table.action.clean;
 
 import org.apache.hudi.avro.model.HoodieCleanMetadata;
-import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.CompactionOperation;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieBaseFile;
@@ -42,6 +41,7 @@ import org.apache.hudi.exception.HoodieIOException;
 import org.apache.hudi.table.HoodieTable;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+import org.apache.spark.api.java.JavaSparkContext;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -88,7 +88,7 @@ public class CleanPlanner<T extends HoodieRecordPayload<T>> implements Serializa
    * @return list of partitions to scan for cleaning
    * @throws IOException when underlying file-system throws this exception
    */
-  public List<String> getPartitionPathsToClean(Option<HoodieInstant> newInstantToRetain) throws IOException {
+  public List<String> getPartitionPathsToClean(Option<HoodieInstant> newInstantToRetain, JavaSparkContext jsc) throws IOException {
     if (config.incrementalCleanerModeEnabled() && newInstantToRetain.isPresent()
         && (HoodieCleaningPolicy.KEEP_LATEST_COMMITS == config.getCleanerPolicy())) {
       Option<HoodieInstant> lastClean =
@@ -115,8 +115,7 @@ public class CleanPlanner<T extends HoodieRecordPayload<T>> implements Serializa
       }
     }
     // Otherwise go to brute force mode of scanning all partitions
-    return FSUtils.getAllPartitionPaths(hoodieTable.getMetaClient().getFs(),
-        hoodieTable.getMetaClient().getBasePath(), config.shouldAssumeDatePartitioning());
+    return hoodieTable.getAllPartitionPaths(jsc);
   }
 
   /**

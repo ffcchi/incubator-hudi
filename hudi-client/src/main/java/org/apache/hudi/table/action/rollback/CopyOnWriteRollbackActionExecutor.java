@@ -19,7 +19,6 @@
 package org.apache.hudi.table.action.rollback;
 
 import org.apache.hudi.common.HoodieRollbackStat;
-import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.table.timeline.HoodieActiveTimeline;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.config.HoodieWriteConfig;
@@ -86,8 +85,7 @@ public class CopyOnWriteRollbackActionExecutor extends BaseRollbackActionExecuto
 
   private List<RollbackRequest> generateRollbackRequests(HoodieInstant instantToRollback)
       throws IOException {
-    return FSUtils.getAllPartitionPaths(table.getMetaClient().getFs(), table.getMetaClient().getBasePath(),
-        config.shouldAssumeDatePartitioning()).stream()
+    return table.getAllPartitionPaths(jsc).stream()
         .map(partitionPath -> RollbackRequest.createRollbackRequestWithDeleteDataAndLogFilesAction(partitionPath, instantToRollback))
         .collect(Collectors.toList());
   }

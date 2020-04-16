@@ -26,7 +26,6 @@ import org.apache.hudi.avro.model.HoodieRollbackMetadata;
 import org.apache.hudi.avro.model.HoodieSavepointMetadata;
 import org.apache.hudi.client.embedded.EmbeddedTimelineService;
 import org.apache.hudi.client.utils.SparkConfigUtils;
-import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.HoodieBaseFile;
 import org.apache.hudi.common.model.HoodieCommitMetadata;
 import org.apache.hudi.common.model.HoodieKey;
@@ -423,9 +422,9 @@ public class HoodieWriteClient<T extends HoodieRecordPayload> extends AbstractHo
           HoodieTimeline.compareTimestamps(instantTime, lastCommitRetained, HoodieTimeline.GREATER_OR_EQUAL),
           "Could not savepoint commit " + instantTime + " as this is beyond the lookup window " + lastCommitRetained);
 
+      List<String> allPartitionPaths = table.getAllPartitionPaths(jsc);
       Map<String, List<String>> latestFilesMap = jsc
-          .parallelize(FSUtils.getAllPartitionPaths(fs, table.getMetaClient().getBasePath(),
-              config.shouldAssumeDatePartitioning()))
+          .parallelize(allPartitionPaths)
           .mapToPair((PairFunction<String, String, List<String>>) partitionPath -> {
             // Scan all partitions files with this commit time
             LOG.info("Collecting latest files in partition path " + partitionPath);

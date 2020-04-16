@@ -19,8 +19,11 @@
 package org.apache.hudi.table;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hudi.avro.model.HoodieCleanMetadata;
 import org.apache.hudi.avro.model.HoodieCompactionPlan;
 import org.apache.hudi.avro.model.HoodieRestoreMetadata;
@@ -34,6 +37,7 @@ import org.apache.hudi.common.fs.ConsistencyGuard.FileVisibility;
 import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.fs.FailSafeConsistencyGuard;
 import org.apache.hudi.common.model.HoodieKey;
+import org.apache.hudi.common.model.HoodiePartitionMetadata;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieRecordPayload;
 import org.apache.hudi.common.model.HoodieWriteStat;
@@ -65,6 +69,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
@@ -94,6 +99,37 @@ public abstract class HoodieTable<T extends HoodieRecordPayload> implements Seri
         config.getViewStorageConfig());
     this.metaClient = metaClient;
     this.index = HoodieIndex.createIndex(config, jsc);
+  }
+
+  public List<String> getAllPartitionPaths(JavaSparkContext jsc) throws IOException {
+    Path tableBasePath = new Path(metaClient.getBasePath());
+    String tableBasePathStr = tableBasePath.toString();
+    FileStatus[] topLevelStatuses = metaClient.getFs().listStatus(tableBasePath);
+    return jsc.parallelize(Arrays.asList(topLevelStatuses), topLevelStatuses.length)
+            .filter(it -> !it.getPath().toString().endsWith(HoodieTableMetaClient.METAFOLDER_NAME))
+            .map(this::getPartitionMetaFiles)
+            .flatMap(List::iterator)
+            .map(partitionMetaFile ->
+                    FSUtils.getRelativePartitionPath(tableBasePathStr, partitionMetaFile.getPath().getParent().toString()))
+            .collect();
+  }
+
+  private List<FileStatus> getPartitionMetaFiles(FileStatus topLevelFile) throws IOException {
+    List<FileStatus> partitionMetaFiles = new ArrayList<>();
+    if (topLevelFile.isFile()) {
+      if (topLevelFile.getPath().getName().equals(HoodiePartitionMetadata.HOODIE_PARTITION_METAFILE)) {
+        partitionMetaFiles.add(topLevelFile);
+      }
+    } else {
+      RemoteIterator<LocatedFileStatus> itr = metaClient.getFs().listFiles(topLevelFile.getPath(), true);
+      while (itr.hasNext()) {
+        FileStatus file = itr.next();
+        if (file.getPath().getName().equals(HoodiePartitionMetadata.HOODIE_PARTITION_METAFILE)) {
+          partitionMetaFiles.add(file);
+        }
+      }
+    }
+    return partitionMetaFiles;
   }
 
   private synchronized FileSystemViewManager getViewManager() {
@@ -316,6 +352,7 @@ public abstract class HoodieTable<T extends HoodieRecordPayload> implements Seri
   public HoodieActiveTimeline getActiveTimeline() {
     return metaClient.getActiveTimeline();
   }
+
 
   /**
    * Return the index.

@@ -19,7 +19,6 @@
 package org.apache.hudi.client;
 
 import org.apache.hudi.common.HoodieTestDataGenerator;
-import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.HoodieBaseFile;
 import org.apache.hudi.common.model.HoodieCleaningPolicy;
 import org.apache.hudi.common.model.HoodieRecord;
@@ -96,10 +95,9 @@ public class TestClientRollback extends TestHoodieClientBase {
       statuses = client.upsert(jsc.parallelize(records, 1), newCommitTime).collect();
       // Verify there are no errors
       assertNoWriteErrors(statuses);
-      List<String> partitionPaths =
-          FSUtils.getAllPartitionPaths(fs, cfg.getBasePath(), getConfig().shouldAssumeDatePartitioning());
-      metaClient = HoodieTableMetaClient.reload(metaClient);
       HoodieTable table = HoodieTable.create(metaClient, getConfig(), jsc);
+      List<String> partitionPaths = table.getAllPartitionPaths(jsc);
+      metaClient = HoodieTableMetaClient.reload(metaClient);
       final BaseFileOnlyView view1 = table.getBaseFileOnlyView();
 
       List<HoodieBaseFile> dataFiles = partitionPaths.stream().flatMap(s -> {

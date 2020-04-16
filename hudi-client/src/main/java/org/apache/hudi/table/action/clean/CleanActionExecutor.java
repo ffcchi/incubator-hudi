@@ -71,7 +71,7 @@ public class CleanActionExecutor extends BaseActionExecutor<HoodieCleanMetadata>
     try {
       CleanPlanner<?> planner = new CleanPlanner<>(table, config);
       Option<HoodieInstant> earliestInstant = planner.getEarliestCommitToRetain();
-      List<String> partitionsToClean = planner.getPartitionPathsToClean(earliestInstant);
+      List<String> partitionsToClean = planner.getPartitionPathsToClean(earliestInstant, jsc);
 
       if (partitionsToClean.isEmpty()) {
         LOG.info("Nothing to clean here. It is already clean");

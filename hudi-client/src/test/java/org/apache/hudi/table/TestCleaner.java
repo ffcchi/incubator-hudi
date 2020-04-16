@@ -34,6 +34,7 @@ import org.apache.hudi.common.model.HoodieCleaningPolicy;
 import org.apache.hudi.common.model.HoodieCommitMetadata;
 import org.apache.hudi.common.model.HoodieFileGroup;
 import org.apache.hudi.common.model.HoodieFileGroupId;
+import org.apache.hudi.common.model.HoodiePartitionMetadata;
 import org.apache.hudi.common.model.HoodieRecord;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.model.HoodieTestUtils;
@@ -471,6 +472,14 @@ public class TestCleaner extends TestHoodieClientBase {
     // make 1 commit, with 1 file per partition
     HoodieTestUtils.createCommitFiles(basePath, "000");
 
+    HoodiePartitionMetadata partitionMetaDataFile1 =
+            new HoodiePartitionMetadata(fs, new Path(basePath + "/" + HoodieTestDataGenerator.DEFAULT_FIRST_PARTITION_PATH));
+    partitionMetaDataFile1.trySave(1);
+
+    HoodiePartitionMetadata partitionMetaDataFile2 =
+            new HoodiePartitionMetadata(fs, new Path(basePath + "/" + HoodieTestDataGenerator.DEFAULT_SECOND_PARTITION_PATH));
+    partitionMetaDataFile2.trySave(1);
+
     String file1P0C0 =
         HoodieTestUtils.createNewDataFile(basePath, HoodieTestDataGenerator.DEFAULT_FIRST_PARTITION_PATH, "000");
     String file1P1C0 =
@@ -559,6 +568,9 @@ public class TestCleaner extends TestHoodieClientBase {
             .build();
 
     HoodieTestUtils.init(jsc.hadoopConfiguration(), basePath, HoodieTableType.MERGE_ON_READ);
+    HoodiePartitionMetadata partitionMetaDataFile1 =
+            new HoodiePartitionMetadata(fs, new Path(basePath + "/" + HoodieTestDataGenerator.DEFAULT_FIRST_PARTITION_PATH));
+    partitionMetaDataFile1.trySave(1);
 
     // Make 3 files, one base file and 2 log files associated with base file
     String file1P0 =
@@ -730,6 +742,13 @@ public class TestCleaner extends TestHoodieClientBase {
 
     // make 1 commit, with 1 file per partition
     HoodieTestUtils.createInflightCommitFiles(basePath, "000");
+    HoodiePartitionMetadata partitionMetaDataFile1 =
+            new HoodiePartitionMetadata(fs, new Path(basePath + "/" + HoodieTestDataGenerator.DEFAULT_FIRST_PARTITION_PATH));
+    partitionMetaDataFile1.trySave(1);
+
+    HoodiePartitionMetadata partitionMetaDataFile2 =
+            new HoodiePartitionMetadata(fs, new Path(basePath + "/" + HoodieTestDataGenerator.DEFAULT_SECOND_PARTITION_PATH));
+    partitionMetaDataFile2.trySave(1);
 
     String file1P0C0 =
         HoodieTestUtils.createNewDataFile(basePath, HoodieTestDataGenerator.DEFAULT_FIRST_PARTITION_PATH, "000");
@@ -1028,6 +1047,9 @@ public class TestCleaner extends TestHoodieClientBase {
     int maxNumFileIds = 7;
     String[] fileIds = new String[] {"fileId1", "fileId2", "fileId3", "fileId4", "fileId5", "fileId6", "fileId7"};
     int maxNumFileIdsForCompaction = 4;
+    HoodiePartitionMetadata partitionMetaDataFile =
+            new HoodiePartitionMetadata(fs, new Path(basePath + "/" + HoodieTestDataGenerator.DEFAULT_FIRST_PARTITION_PATH));
+    partitionMetaDataFile.trySave(1);
     for (int i = 0; i < maxNumFileIds; i++) {
       final String fileId = HoodieTestUtils.createDataFile(basePath,
           HoodieTestDataGenerator.DEFAULT_FIRST_PARTITION_PATH, instants[0], fileIds[i]);

@@ -18,7 +18,6 @@
 
 package org.apache.hudi.utilities.perf;
 
-import org.apache.hudi.common.fs.FSUtils;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.view.FileSystemViewStorageConfig;
@@ -26,6 +25,8 @@ import org.apache.hudi.common.table.view.FileSystemViewStorageType;
 import org.apache.hudi.common.table.view.RemoteHoodieTableFileSystemView;
 import org.apache.hudi.common.table.view.SyncableFileSystemView;
 import org.apache.hudi.common.util.Option;
+import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.timeline.service.TimelineService;
 import org.apache.hudi.utilities.UtilHelpers;
 
@@ -83,11 +84,20 @@ public class TimelineServerPerf implements Serializable {
 
   public void run() throws IOException {
 
-    List<String> allPartitionPaths = FSUtils.getAllPartitionPaths(timelineServer.getFs(), cfg.basePath, true);
+    JavaSparkContext jsc = UtilHelpers.buildSparkContext("hudi-view-perf-" + cfg.basePath, cfg.sparkMaster);
+    FileSystem fs = timelineServer.getFs();
+    final HoodieTableMetaClient tableMetadata = new HoodieTableMetaClient(fs.getConf(), cfg.basePath);
+    final HoodieWriteConfig writeConfig = HoodieWriteConfig
+            .newBuilder()
+            .withPath(cfg.basePath)
+            .build();
+    final HoodieTable table = HoodieTable.create(tableMetadata, writeConfig, jsc);
+
+    List<String> allPartitionPaths = table.getAllPartitionPaths(jsc);
     Collections.shuffle(allPartitionPaths);
     List<String> selected = allPartitionPaths.stream().filter(p -> !p.contains("error")).limit(cfg.maxPartitions)
         .collect(Collectors.toList());
-    JavaSparkContext jsc = UtilHelpers.buildSparkContext("hudi-view-perf-" + cfg.basePath, cfg.sparkMaster);
+
     if (!useExternalTimelineServer) {
       this.timelineServer.startService();
       setHostAddrFromSparkConf(jsc.getConf());

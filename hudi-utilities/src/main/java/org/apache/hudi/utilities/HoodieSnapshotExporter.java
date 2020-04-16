@@ -33,6 +33,8 @@ import org.apache.hudi.common.util.CollectionUtils;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.ReflectionUtils;
 import org.apache.hudi.common.util.StringUtils;
+import org.apache.hudi.config.HoodieWriteConfig;
+import org.apache.hudi.table.HoodieTable;
 import org.apache.hudi.utilities.exception.HoodieSnapshotExporterException;
 
 import com.beust.jcommander.IValueValidator;
@@ -114,7 +116,14 @@ public class HoodieSnapshotExporter {
   }
 
   public void export(JavaSparkContext jsc, Config cfg) throws IOException {
+
     FileSystem fs = FSUtils.getFs(cfg.sourceBasePath, jsc.hadoopConfiguration());
+    final HoodieTableMetaClient tableMetadata = new HoodieTableMetaClient(fs.getConf(), cfg.sourceBasePath);
+    final HoodieWriteConfig writeConfig = HoodieWriteConfig
+            .newBuilder()
+            .withPath(cfg.sourceBasePath)
+            .build();
+    final HoodieTable table = HoodieTable.create(tableMetadata, writeConfig, jsc);
 
     if (outputPathExists(fs, cfg)) {
       throw new HoodieSnapshotExporterException("The target output path already exists.");
@@ -126,7 +135,7 @@ public class HoodieSnapshotExporter {
     LOG.info(String.format("Starting to snapshot latest version files which are also no-late-than %s.",
         latestCommitTimestamp));
 
-    final List<String> partitions = getPartitions(fs, cfg);
+    final List<String> partitions = table.getAllPartitionPaths(jsc);
     if (partitions.isEmpty()) {
       throw new HoodieSnapshotExporterException("The source dataset has 0 partition to snapshot.");
     }
@@ -148,10 +157,6 @@ public class HoodieSnapshotExporter {
     final HoodieTableMetaClient tableMetadata = new HoodieTableMetaClient(fs.getConf(), cfg.sourceBasePath);
     Option<HoodieInstant> latestCommit = tableMetadata.getActiveTimeline().getCommitsTimeline().filterCompletedInstants().lastInstant();
     return latestCommit.isPresent() ? Option.of(latestCommit.get().getTimestamp()) : Option.empty();
-  }
-
-  private List<String> getPartitions(FileSystem fs, Config cfg) throws IOException {
-    return FSUtils.getAllPartitionPaths(fs, cfg.sourceBasePath, false);
   }
 
   private void createSuccessTag(FileSystem fs, Config cfg) throws IOException {

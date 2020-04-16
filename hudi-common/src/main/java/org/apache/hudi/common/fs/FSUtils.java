@@ -177,6 +177,12 @@ public class FSUtils {
         : partitionFullPath.substring(partitionStartIndex + basePath.getName().length() + 1);
   }
 
+  public static String getRelativePartitionPath(String basePathStr, String partitionPathStr) {
+    Path basePath = new Path(basePathStr);
+    Path partitionPath = new Path(partitionPathStr);
+    return getRelativePartitionPath(basePath, partitionPath);
+  }
+
   /**
    * Obtain all the partition paths, that are present in this table, denoted by presence of
    * {@link HoodiePartitionMetadata#HOODIE_PARTITION_METAFILE}.
